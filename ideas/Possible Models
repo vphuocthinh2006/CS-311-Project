@@ -1,1 +1,99 @@
 
+2. **AI Study Companion**
+
+* Ghi âm + chụp ảnh vở/slide.
+* Sinh ra tóm tắt + quiz + flashcards.
+* Desktop app cho sinh viên ôn thi.
+
+
+7. **Deepfake Detection Desktop Tool**
+
+* Người dùng kéo thả video.
+* AI phân tích khuôn mặt, âm thanh, đồng bộ môi miệng → báo % fake.
+* Dùng cho sinh viên nghiên cứu + truyền thông.
+
+
+9. **AI Meeting Integrity Checker**
+
+* So sánh transcript (giọng nói) với văn bản báo cáo.
+* Phát hiện thông tin bị bóp méo / sai lệch.
+* Phát hiện báo lá cải
+
+
+25. **App giám sát, phát hiện đối tượng khả nghi cùng với caption mô tả đối tượng**
+
+* Input: video thời gian thực
+* Model sau khi học được danh tính của những người được cấp quyền sẽ xác định đối tượng khả nghi rồi sinh cap mô tả
+
+
+11. **Esports Replay Analyzer**
+
+* Input: video game + chat log.
+* App phân tích highlight, hành vi team, và tạo auto-summary.
+
+
+13. **Sign Language Translator**
+
+* Input: camera quay tay/ký hiệu.
+* CV: nhận diện cử chỉ → chuyển thành text/giọng nói.
+* Hữu ích cho cộng đồng khiếm thính.
+
+
+25. **App mô tả ảnh,video bằng nhiều ngôn ngữ**
+
+* Input: ảnh,video bất kì
+* Model nhận diện input và sinh ra mô tả theo ngôn ngữ được yêu cầu
+
+
+14. **Fitness Form Checker**
+
+* Người tập gym quay video.
+* CV phân tích dáng tập → NLP sinh ra feedback: “Lưng bạn cong, hãy chỉnh lại”.
+* Desktop app cho PT online.
+
+
+16. **Smart Resume Screener**
+
+* Input: video phỏng vấn (khuôn mặt + giọng) + CV file PDF.
+* AI phân tích tính cách + khớp skill với yêu cầu job.
+* Xuất ra báo cáo cho HR.
+
+
+29. **Information Extraction**
+
+* Input: giấy tờ tùy thân, hóa đơn
+* Output: Thông tin khách hàng (vd: tên, tuổi, địa chỉ, cccd, mã hóa đơn, mặt hàng,....)
+
+
+26. **Chatbot phân tích ảnh + text**
+
+* Input: ảnh và mô tả của khách hàng về 1 mặt hàng
+* Output: thông tin về sản phẩm đó trong shop hiện tại
+
+
+19. **Movie Scene Analyzer**
+
+* Input: video phim.
+* CV: nhận diện nhân vật, hành động.
+* NLP: sinh mô tả ngắn “Nhân vật A đang tranh cãi với B trong quán cà phê”.
+* Dùng cho indexing phim hoặc tạo phụ đề tự động.
+
+
+22. **Parking Finder Assistant**
+
+* Input: camera bãi xe + giọng nói.
+* CV: phát hiện xe còn chỗ trống.
+* NLP: trả lời “Tầng 2, slot B15 còn trống”.
+
+
+24. **Science Experiment Explainer**
+
+* Input: video thí nghiệm (ví dụ: dung dịch đổi màu).
+* AI nhận diện hiện tượng + sinh giải thích khoa học.
+* Desktop app cho học sinh/giáo viên.
+
+
+30. **App tự động tìm địa điểm theo yêu cầu (cùng loại với 26)**
+
+* Input: mô tả của khách du lịch về địa điểm (ảnh,text)
+* Output: địa điểm phù hợp với mô tả
