@@ -61,6 +61,16 @@
    * So sánh transcript (giọng nói) với văn bản báo cáo.
    * Phát hiện thông tin bị bóp méo / sai lệch.
 
+25. **App giám sát, phát hiện đối tượng khả nghi cùng với caption mô tả đối tượng**
+
+   * Input: video thời gian thực
+   * Model sau khi học được danh tính của những người được cấp quyền sẽ xác định đối tượng khả nghi rồi sinh cap mô tả
+
+31. **AI phát hiện nói dối**
+
+   * Input: đoạn video phát biểu của người
+   * Model sẽ xem xét context đc đưa ra từ video có mâu thuẫn với nhau hay không, cử chỉ khuôn mặt có khả nghi hay không
+
 ---
 
 ## 🎮 Nhóm 4: Giải trí & Game
@@ -100,6 +110,11 @@
 * CV: nhận diện cử chỉ → chuyển thành text/giọng nói.
 * Hữu ích cho cộng đồng khiếm thính.
 
+
+25. **App mô tả ảnh,video bằng nhiều ngôn ngữ**
+
+* Input: ảnh,video bất kì
+* Model nhận diện input và sinh ra mô tả theo ngôn ngữ được yêu cầu
 ---
 
 ## 🏥 Nhóm 6: Sức khoẻ & Đời sống (phi-y tế nặng)
@@ -115,6 +130,10 @@
 * Kéo thả ảnh món ăn → AI nhận diện nguyên liệu.
 * Sinh ra calories + gợi ý chế độ ăn.
 * Có thể kết hợp với voice query.
+
+28. **Medical Assitant**
+* Input: ảnh x-ray và báo cáo của bác sĩ
+* Output: chuẩn đoán bệnh lý, góp ý điều trị
 
 ---
 
@@ -138,6 +157,15 @@
 * AI tạo Q\&A: “Trong chương 2 nói gì?”
 * Desktop app cho sinh viên làm seminar.
 
+29. **Information Extraction**
+
+* Input: giấy tờ tùy thân, hóa đơn
+* Output: Thông tin khách hàng (vd: tên, tuổi, địa chỉ, cccd, mã hóa đơn, mặt hàng,....)
+
+26. **Chatbot phân tích ảnh + text**
+
+* Input: ảnh và mô tả của khách hàng về 1 mặt hàng
+* Output: thông tin về sản phẩm đó trong shop hiện tại
 ---
 
 ## 🎬 Nhóm 8: Media & Video
@@ -191,6 +219,12 @@
 
 ---
 
+## ✈️ Nhóm 11: Du lịch
+
+30. **App tự động tìm địa điểm theo yêu cầu**
+
+* Input: mô tả của khách du lịch về địa điểm (ảnh,text)
+* Output: địa điểm phù hợp với mô tả
 🔥 Như vậy mình đã có hơn **24 project multimodal** thuộc nhiều hướng khác nhau.
 
 
