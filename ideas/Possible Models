@@ -97,3 +97,9 @@
 
 * Input: mô tả của khách du lịch về địa điểm (ảnh,text)
 * Output: địa điểm phù hợp với mô tả
+
+
+32. **App hỗ trợ tìm kiếm hỗ trợ an sinh xã hội**
+
+* Input: text mô tả hoàn cảnh người cần được hỗ trợ
+* Output: các quỹ hỗ trợ mà người đó đáp ứng đủ điều kiện
