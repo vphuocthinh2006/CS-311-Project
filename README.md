@@ -661,6 +661,3 @@ OUTPUT: <rewritten bullet>
 3. Cài `sentence-transformers` và encode một CV sample + một JD sample, tính cosine similarity — bạn sẽ thấy pipeline cơ bản chạy được.
 
 ---
-
-
-👉 Mình có thể viết cho bạn **mockup output UI (giao diện app)** để bạn dễ hình dung hơn không?
