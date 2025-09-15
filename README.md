@@ -653,11 +653,3 @@ OUTPUT: <rewritten bullet>
 10. [ ] Packaging + release.
 
 ---
-
-# Ba hành động bạn có thể làm ngay (cực thực tế)
-
-1. Tạo repo GitHub và commit `README` + `requirements.txt`.
-2. Lấy 10 CV PDF (ẩn danh) + 10 JD, chạy thử snippet PyMuPDF để xem cấu trúc.
-3. Cài `sentence-transformers` và encode một CV sample + một JD sample, tính cosine similarity — bạn sẽ thấy pipeline cơ bản chạy được.
-
----
