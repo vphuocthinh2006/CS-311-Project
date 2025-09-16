@@ -6,21 +6,25 @@
 ## 🎯 Mục tiêu chính
 
 1. **CV Analyzer**
+(2 input: ảnh + text)
+
+(OCR + NLP)
+(trích thông tin ra, tập trung vô phần nào của CV rồi truy cứu bên kaggle dataset của IT job roles dataset r đối chứng xem cần skills j và output ra)
 
    * Phân tích bố cục CV (layout).
    * Đưa feedback chi tiết (thiếu skill, thiếu section, keyword chưa match).
 
-2. **Company Fit Finder**
+3. **Company Fit Finder**
 
    * So khớp CV với Job Description (JD).
    * Gợi ý công ty/position phù hợp nhất.
    * Đưa ra lý do (match/thiếu skill nào).
 
-3. **App Desktop**
+4. **App Desktop**
 
    * Giao diện kéo-thả CV PDF.
    * Hiển thị feedback + danh sách công ty gợi ý.
-
+(web app = stream lit)
 ---
 
 ## 🗂️ Công nghệ & Toolchain
