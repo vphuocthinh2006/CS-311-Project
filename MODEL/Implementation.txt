@@ -1,0 +1,198 @@
+Tuyệt — mình sẽ đưa cho bạn một roadmap thực tế + kiến trúc phổ biến + ví dụ code (PyTorch + Hugging Face style) để **ghép một/ nhiều mô hình ngôn ngữ (LM) vào một Vision–Language Model (VLM)**. Mình viết đầy đủ các bước từ thiết kế đến huấn luyện và triển khai — bạn có thể lấy ngay và áp dụng.
+
+# 1. Tổng quan kiến trúc (patterns phổ biến)
+
+1. **Prefix / Prompting (Shallow fusion)**
+
+   * Dùng encoder ảnh (ví dụ CLIP ViT, ViT, Swin) để tạo embedding ảnh → chiếu (linear proj) sang không gian embedding của LM → *prepend* (prefix) vào embedding chuỗi trước khi LM sinh.
+   * Ưu: đơn giản, dễ tích hợp với LM lớn không cần thay đổi cấu trúc.
+   * Nhược: giới hạn khả năng tương tác phức tạp.
+
+2. **Cross-attention (Deep fusion)**
+
+   * LM (decoder / causal LM) có các lớp cross-attention vào embedding ảnh (hoặc token ảnh) -> cho phép LM attend trực tiếp tới nội dung ảnh trong quá trình sinh.
+   * Dùng khi bạn muốn multi-modal reasoning mạnh hơn.
+
+3. **Q-Former / Bottleneck Tokens (BLIP-2 style)**
+
+   * Tạo một tập token đặc biệt (query tokens) tương tác với encoder ảnh để tóm tắt thông tin ảnh thành vài token "nghĩa" → chiếu vào LM.
+   * Hiệu quả về tham số, thường được dùng khi LM rất lớn.
+
+4. **Encoder-Decoder multimodal**
+
+   * Dùng encoder chung cho text+image (hoặc encoder ảnh + encoder text) rồi decoder để sinh. Tương tự seq2seq nhưng mở rộng cho ảnh.
+
+# 2. Thành phần chính bạn cần
+
+* **Vision encoder**: CLIPVisionModel, ViT, Swin, conv-backbone. Trả về token embeddings / pooling vector.
+* **Projection head**: Linear (hoặc MLP) để map embedding ảnh → không gian embedding LM (kích thước d\_model).
+* **Token adapter / Q-former** (tuỳ chọn): một mô-đun transformer nhỏ để rút gọn / điều chỉnh thông tin ảnh.
+* **Language model**: causal LM (GPT, LLaMA, Falcon) hoặc encoder-decoder (T5).
+* **Fusion mechanism**: prepend embeddings / cross-attention / adapters.
+* **PEFT**: LoRA / adapters cho fine-tuning nhẹ.
+* **Tokenizer**: tokenizer của LM; nếu bạn chèn prefix embedding, không cần tokenizer ảnh, chỉ cần convert ảnh → embedding.
+
+# 3. Quy trình implement — bước từng bước
+
+1. **Chọn mục tiêu** (captioning, VQA, multimodal chat, retrieval, instruction tuning).
+2. **Chọn LM & Vision encoder** tương thích (kích thước embedding, license).
+3. **Thiết kế fusion** (prefix vs cross-attention vs Q-former).
+4. **Xây dựng projection**: Linear(d\_img → d\_lm) hoặc MLP. Có thể thêm LayerNorm.
+5. **Chuẩn bị dữ liệu**: (image, text) pairs; cho VQA thêm câu hỏi/answer. Augmentation, filtering, alignment.
+6. **Fine-tune**: chỉ train projection + top adapter / LoRA (+ Q-former nếu có) trước khi train toàn bộ model.
+7. **Evaluation**: BLEU / CIDEr / ROUGE / Exact Match / VQA accuracy; human eval cho reasoning/multi-turn.
+8. **Optimization & quantization**: 8-bit / 4-bit + ONNX/Triton cho inference nhanh.
+9. **Deployment**: API, streaming generation (attention to latency), safety filters.
+
+# 4. Ví dụ code (minimal, PyTorch + Hugging Face pattern)
+
+> Mô tả: dùng CLIP vision encoder lấy image features → linear proj → prepend làm prefix embeddings cho causal LM (ví dụ `LlamaForCausalLM`). Đây là pattern *prefix* đơn giản, dễ triển khai.
+
+```python
+# Ví dụ minh hoạ — cần `transformers`, `torch`, `PIL`, `timm` hoặc CLIP từ HF
+import torch
+import torch.nn as nn
+from transformers import CLIPVisionModel, AutoTokenizer, AutoModelForCausalLM
+
+class SimpleVLM(nn.Module):
+    def __init__(self, vision_model_name, lm_name, n_prefix_tokens=10):
+        super().__init__()
+        # Vision encoder (pretrained)
+        self.vision = CLIPVisionModel.from_pretrained(vision_model_name)
+        # Language model (causal)
+        self.lm = AutoModelForCausalLM.from_pretrained(lm_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(lm_name, use_fast=True)
+
+        d_img = self.vision.config.hidden_size        # e.g. 768
+        d_lm = self.lm.config.hidden_size             # embedding dim của LM
+        self.n_prefix = n_prefix_tokens
+
+        # Projection from pooled image features -> n_prefix * d_lm
+        self.img_proj = nn.Sequential(
+            nn.Linear(d_img, d_img),
+            nn.ReLU(),
+            nn.Linear(d_img, n_prefix_tokens * d_lm)
+        )
+
+        # Optional: freeze vision & LM for PEFT training
+        for p in self.vision.parameters():
+            p.requires_grad = False
+        for p in self.lm.parameters():
+            p.requires_grad = False
+
+        # Only train img_proj by default (or add LoRA/adapters later)
+    
+    def forward(self, images, input_text_ids=None, attention_mask=None):
+        # images: preprocessed as HF CLIPVisionModel expects
+        vision_outputs = self.vision(pixel_values=images, return_dict=True)
+        pooled = vision_outputs.pooler_output  # shape (B, d_img)
+
+        # project -> prefix embeddings shaped (B, n_prefix, d_lm)
+        prefix = self.img_proj(pooled)
+        B = prefix.shape[0]
+        prefix = prefix.view(B, self.n_prefix, -1)  # (B, n_prefix, d_lm)
+
+        # Prepare LM input embeddings
+        if input_text_ids is None:
+            # we can do generation-only path later
+            raise ValueError("input_text_ids required for forward training pass")
+
+        # get token embeddings from LM's embedding layer
+        input_embeds = self.lm.get_input_embeddings()(input_text_ids)  # (B, T, d_lm)
+
+        # concat prefix + token embeddings
+        inputs_embeds = torch.cat([prefix, input_embeds], dim=1)  # (B, n_prefix+T, d_lm)
+
+        # build attention mask: ones for prefix + original mask
+        prefix_mask = torch.ones(B, self.n_prefix, device=attention_mask.device)
+        new_attention_mask = torch.cat([prefix_mask, attention_mask], dim=1)
+
+        # forward through LM using inputs_embeds
+        outputs = self.lm(inputs_embeds=inputs_embeds, attention_mask=new_attention_mask, labels=None, return_dict=True)
+        return outputs
+
+    @torch.no_grad()
+    def generate_with_image(self, images, prompt, max_new_tokens=50, **gen_kwargs):
+        # encode prompt tokens
+        tok = self.tokenizer(prompt, return_tensors="pt", padding=True).to(pooled.device)
+        input_ids = tok["input_ids"]
+        attn_mask = tok["attention_mask"]
+
+        # compute prefix as above
+        vision_outputs = self.vision(pixel_values=images.to(pooled.device), return_dict=True)
+        pooled = vision_outputs.pooler_output
+        prefix = self.img_proj(pooled).view(1, self.n_prefix, -1)
+
+        # get embeddings for prompt
+        input_embeds = self.lm.get_input_embeddings()(input_ids)
+
+        # concat and use LM.generate via inputs_embeds (HF supports inputs_embeds for generate)
+        inputs_embeds = torch.cat([prefix, input_embeds], dim=1)
+        prefix_mask = torch.ones(1, self.n_prefix, device=inputs_embeds.device)
+        new_attn = torch.cat([prefix_mask, attn_mask.to(inputs_embeds.device)], dim=1)
+
+        out = self.lm.generate(inputs_embeds=inputs_embeds, attention_mask=new_attn,
+                               max_new_tokens=max_new_tokens, **gen_kwargs)
+        return self.tokenizer.decode(out[0], skip_special_tokens=True)
+```
+
+Ghi chú:
+
+* Đây là ví dụ đơn giản hoá; thực tế bạn cần xử lý batch generation, device placement, padding, và generation bước-bước nếu LM lớn.
+* Nếu LM ko chấp nhận `inputs_embeds` trong `generate` (tuỳ phiên bản), bạn có thể tạo *fake* token ids cho prefix và nối input ids + attention mask, hoặc dùng cross-attention approach.
+
+# 5. Cách huấn luyện (practical)
+
+* **Phase 1 (warm-up)**: chỉ train `img_proj` + (Q-former nếu có). Vision + LM freeze. LR nhỏ (\~1e-4 → 1e-5). Objective: next-token prediction (causal LM) hoặc cross-entropy label.
+* **Phase 2 (PEFT)**: dùng **LoRA** hoặc Adapter trên các lớp self-attn/cross-attn của LM. Train LoRA + img\_proj. Giữ LM chính frozen for parameter efficiency.
+* **Phase 3 (optional)**: unfreeze một số layer LM nếu cần, train toàn bộ mô hình cho performance tối đa (tốn compute).
+* **Losses**: causal LM loss; cho VQA có thể thêm classification loss; cho grounding có thể thêm contrastive loss.
+
+# 6. Kỹ thuật tiết kiệm tài nguyên & tối ưu inference
+
+* **PEFT**: LoRA > Adapters giúp tune nhẹ, tiết kiệm GPU.
+* **Quantization**: bitsandbytes 8-bit/4-bit để giảm VRAM.
+* **Flash attention / xformers** để giảm mem/time.
+* **Distillation**: distill model lớn ra model nhỏ hơn cho inference.
+* **ONNX / TensorRT / TorchScript / Triton** cho production.
+
+# 7. Thư viện & công cụ hữu ích
+
+* Transformers (Hugging Face) — model hub, tokenizers.
+* timm / CLIP / open-clip — vision backbones.
+* PEFT (LoRA), bitsandbytes — efficient fine-tuning & quantization.
+* accelerate / deepspeed — distributed training.
+* datasets (HF datasets) hoặc WebDataset — streaming large-scale data.
+* evaluation: COCO (captioning), VQA v2 eval, BLEU/CIDEr/ROUGE, human eval.
+
+# 8. Datasets tham khảo
+
+* **Image captioning**: COCO Captions.
+* **VQA**: VQA v2.0.
+* **Instruction / multimodal chat**: MMDialog, LLaVA dataset, MMBench, web-scraped image-text pairs (but cần filter).
+* **Specialized**: VisualGenome (object relations), Flickr30k.
+
+# 9. Các lưu ý quan trọng (pitfalls)
+
+* **Modality alignment**: projection kém sẽ dẫn tới collapse (LM ignore prefix). Hãy kiểm tra attention / activation.
+* **Prompt leakage**: nếu bạn prepend token but LM learned prompt-specific shortcuts, test generalization.
+* **Token limits**: cả prefix + text count vào context length — chú ý khi dùng LM có context limit.
+* **Safety / bias / data quality**: lọc dataset, áp rule-based filter cho generation (NSFW, hallucination).
+* **Evaluation khó**: tự động metric thường không đánh giá reasoning; cần human eval.
+
+# 10. Roadmap triển khai (ví dụ timeline ngắn)
+
+1. POC (1–2 tuần): tích hợp vision encoder → projection → prepend → test generation trên vài sample.
+2. PEFT tuning (1–2 tuần): áp LoRA, train trên dataset nhỏ (COCO/VQA).
+3. Scale up (4–8 tuần): mở data, distributed training, evaluate + iter.
+4. Deploy: quantize + serve via Triton/fastAPI.
+
+---
+
+Nếu bạn muốn mình làm tiếp:
+
+* Mình có thể **viết notebook cụ thể** (script) cho POC với `CLIPViT` + `Llama-like` model (kèm bước tiền xử lí ảnh) — hoặc
+* **Thiết kế Q-Former** module (mã chi tiết) nếu bạn muốn kiến trúc BLIP-2 style, hoặc
+* Soạn pipeline training/PEFT với `accelerate` + `bitsandbytes` để chạy trên GPU hạn chế.
+
+Bạn muốn mình làm tiếp theo cái nào? (ví dụ: notebook POC, BLIP-2 Q-Former code, hoặc pipeline PEFT + LoRA).
