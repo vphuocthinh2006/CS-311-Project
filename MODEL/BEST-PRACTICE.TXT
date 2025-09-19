@@ -1,0 +1,65 @@
+Đúng rồi 👌. Khi bạn tách pipeline thành:
+
+* **Qwen (VLM)** → chỉ lo **parse CV (ảnh/PDF) + layout check**.
+* **Text LLM (Gemma, Mistral, Phi, …)** → lo **reasoning, matching, feedback**.
+
+thì đúng nghĩa là bạn đang **gắn thêm một con LLM text-only** để xử lý reasoning.
+Điều này có vài hệ quả về **memory & resource**.
+
+---
+
+## 📦 Memory khi thêm Text LLM
+
+1. **Nếu chạy trên cùng server / GPU:**
+
+   * Bạn sẽ phải load **2 model**:
+
+     * Qwen-VL (7B/14B tuỳ chọn) → nặng, VRAM \~12–20GB (FP16), 6–10GB (INT4).
+     * Text LLM (3B–7B) → VRAM 4–8GB (INT4).
+   * Tổng cộng: \~10–18GB VRAM (nếu quantized).
+   * Nghĩa là cần **GPU 16GB** trở lên mới thoải mái (A4000, A6000, 3090/4090).
+
+2. **Nếu tách server:**
+
+   * Server A: chỉ load Qwen (xử lý parsing khi cần).
+   * Server B: load text-LLM để reasoning.
+   * Ưu điểm: tiết kiệm VRAM cho từng server, dễ scale.
+   * Nhược: cần thêm hạ tầng (API call qua lại).
+
+3. **Nếu chỉ xài Qwen cho parsing (on-demand):**
+
+   * Load Qwen → parse CV → trả text JSON → **unload Qwen**.
+   * Sau đó chỉ giữ Text-LLM trong memory để reasoning.
+   * Cách này tối ưu khi: input chủ yếu là text, chỉ thỉnh thoảng mới có PDF/Image.
+
+---
+
+## 🔑 Trade-off
+
+* **1 model all-in-one (Qwen gánh hết):**
+
+  * Ưu: đơn giản, không phải load 2 model.
+  * Nhược: reasoning không tốt bằng text LLM chuyên dụng, output feedback dễ “loãng”.
+
+* **2 model (Qwen + text LLM):**
+
+  * Ưu: tận dụng đúng điểm mạnh từng con (Qwen = parsing/layout, text LLM = reasoning).
+  * Nhược: thêm memory, cần quản lý pipeline tốt.
+
+---
+
+## 💡 Best practice (nếu resource hạn chế)
+
+* Chỉ load **Qwen khi gặp file PDF/Image**.
+* Sau khi parse → save JSON → **tắt Qwen**.
+* Giữ **Text-LLM (3B–7B quantized)** thường trực để reasoning.
+* Nếu deploy production → tách service:
+
+  * `cv_parser_service` (Qwen, auto-scale theo nhu cầu).
+  * `reasoning_service` (Gemma/Mistral, luôn bật).
+
+---
+
+👉 Vậy nghĩa là **có thêm memory thật**, nhưng có thể tối ưu bằng **quantization + on-demand loading + tách service**.
+
+Bạn muốn mình soạn cho bạn **bảng tính cụ thể VRAM requirement** (Qwen vs Gemma vs Mistral, với FP16/INT8/INT4) để bạn biết cần GPU nào cho setup này không?
