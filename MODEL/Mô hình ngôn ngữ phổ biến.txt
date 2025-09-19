@@ -1,0 +1,99 @@
+Hiện nay, các **mô hình ngôn ngữ (LLM)** và các biến thể của chúng thường được sử dụng cho những tác vụ khác nhau trong NLP/AI. Mình chia theo **tác vụ → mô hình phổ biến** để bạn dễ theo dõi:
+
+---
+
+## 🔎 1. **Phân loại văn bản / Sentiment Analysis / Topic Classification**
+
+* **BERT** (Google) – nền tảng cho hầu hết các mô hình phân loại.
+* **RoBERTa** (Meta) – tối ưu từ BERT, cho hiệu năng cao hơn.
+* **DistilBERT** – nhẹ, nhanh, phù hợp triển khai thực tế.
+* **PhoBERT** (Vietnamese) – tối ưu cho tiếng Việt.
+* **XLM-RoBERTa** – phân loại đa ngôn ngữ.
+
+---
+
+## 🗣 2. **Xử lý Ngôn ngữ Tự nhiên (NLI, Paraphrase, Entailment)**
+
+* **BERT + NLI fine-tune** (SNLI, MNLI).
+* **DeBERTa** (Microsoft) – vượt trội trong NLI.
+* **mBERT, XLM-R** – xử lý đa ngôn ngữ.
+* **ViNLI (Vietnamese NLI dataset) + PhoBERT** – cho tiếng Việt.
+
+---
+
+## 📖 3. **Sinh văn bản (Text Generation)**
+
+* **GPT-3.5 / GPT-4 / GPT-4o (OpenAI)** – hội thoại, viết lách, code.
+* **LLaMA-2 / LLaMA-3 (Meta)** – open-source mạnh mẽ.
+* **Mistral / Mixtral (Mistral AI)** – tối ưu hóa inference nhanh, mô hình mở.
+* **Falcon (TII)** – tập trung vào hiệu năng training mở.
+* **Gemma (Google)** – mô hình open-source mới.
+
+---
+
+## 📝 4. **Tóm tắt văn bản (Summarization)**
+
+* **BART** (Facebook) – rất mạnh trong abstractive summarization.
+* **PEGASUS (Google)** – tối ưu riêng cho summarization.
+* **T5 (Google)** – framework “text-to-text” mạnh mẽ.
+* **LongT5 / BigBird** – xử lý văn bản dài.
+
+---
+
+## 🌐 5. **Dịch máy (Machine Translation)**
+
+* **MarianMT (Helsinki-NLP)** – dịch đa ngôn ngữ, open-source.
+* **mBART** – tốt cho nhiều ngôn ngữ ít tài nguyên.
+* **NLLB (No Language Left Behind – Meta)** – dịch cho >200 ngôn ngữ.
+* **Google Translate / DeepL (commercial)**.
+
+---
+
+## 🔍 6. **Tìm kiếm / Reranking / Semantic Search**
+
+* **Sentence-BERT (SBERT)** – embeddings cho semantic search.
+* **ColBERT** – dense retrieval.
+* **Contriever (Meta)** – retriever không cần supervised.
+* **Cohere Embed / OpenAI Embeddings** – thương mại, chất lượng cao.
+
+---
+
+## 🤖 7. **Hỏi đáp (Question Answering / RAG)**
+
+* **BERT QA (SQuAD fine-tuned)**.
+* **RoBERTa QA** – SOTA trên SQuAD.
+* **GPT-4 / LLaMA-3 + RAG pipeline** – QA trên dữ liệu riêng.
+* **Haystack (framework)** – ứng dụng retrieval + QA.
+
+---
+
+## 🎤 8. **Speech-to-Text / Multimodal**
+
+* **Whisper (OpenAI)** – chuyển giọng nói → văn bản, đa ngôn ngữ.
+* **wav2vec 2.0 (Meta)** – nền tảng ASR.
+* **SeamlessM4T (Meta)** – speech & translation đa ngôn ngữ.
+
+---
+
+## 🖼 9. **Multimodal (Text + Image/Video)**
+
+* **CLIP (OpenAI)** – mapping hình ảnh ↔ văn bản.
+* **BLIP / BLIP-2** – caption ảnh, VQA.
+* **GPT-4V (Vision)** – GPT hỗ trợ hình ảnh.
+* **Kosmos-2 (Microsoft)** – ngôn ngữ + hình ảnh.
+
+---
+
+👉 Tóm lại:
+
+* **Phân loại/NLI** → BERT, RoBERTa, DeBERTa.
+* **Sinh văn bản** → GPT, LLaMA, Mistral.
+* **Tóm tắt** → BART, PEGASUS, T5.
+* **Dịch** → MarianMT, mBART, NLLB.
+* **Tìm kiếm/QA** → SBERT, Contriever, GPT+RAG.
+* **Speech** → Whisper, wav2vec.
+* **Multimodal** → CLIP, BLIP, GPT-4V.
+
+---
+
+Bạn có muốn mình làm **một bảng so sánh nhanh** (tác vụ ↔ mô hình chính ↔ ưu điểm) để tiện tham khảo không?
