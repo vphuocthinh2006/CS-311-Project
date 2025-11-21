@@ -1,0 +1,14 @@
+streamlit
+langchain
+langchain-openai
+langchain-community
+langchain-hub
+python-dotenv
+openai
+pymupdf
+pdf2image
+pytesseract
+Pillow
+sentence-transformers
+scikit-learn
+numpy

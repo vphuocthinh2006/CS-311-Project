@@ -1,0 +1,4 @@
+tesseract-ocr
+tesseract-ocr-vie
+libtesseract-dev
+poppler-utils
