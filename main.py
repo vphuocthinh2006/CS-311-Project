@@ -49,17 +49,6 @@ st.markdown("---")
 if not os.getenv("OPENAI_API_KEY"):
     st.error("⚠️ Chưa tìm thấy OPENAI_API_KEY trong file .env.")
     st.stop()
-with st.expander("⚠️ Lưu ý quan trọng về upload ảnh"):
-    st.markdown("""
-    <div class="warning-box">
-    <strong>Nếu bạn upload CV/JD dưới dạng ảnh (.png, .jpg):</strong>
-    <ul>
-        <li>Cần cài đặt Tesseract OCR trước</li>
-        <li>Windows: <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">Tải tại đây</a></li>
-        <li>Nếu chưa cài, vui lòng chọn "Nhập văn bản (Text)" thay vì upload ảnh</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 with col1:
     st.header("📄 Thông tin Ứng viên (CV)")
