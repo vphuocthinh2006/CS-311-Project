@@ -2,7 +2,7 @@ streamlit
 langchain
 langchain-openai
 langchain-community
-langchain-hub
+langchainhub
 python-dotenv
 openai
 pymupdf
