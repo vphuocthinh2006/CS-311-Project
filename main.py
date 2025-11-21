@@ -159,4 +159,4 @@ if analyze_btn:
                     pass
 
 st.markdown("---")
-st.caption("Phát triển bởi Võ Phước Thịnh, Liên Phúc Thịnh và Gemini - Powered by LangChain & OpenAI & Streamlit")
+st.caption("Phát triển bởi Võ Phước Thịnh, Liên Phúc Thịnh và Nguyễn Tấn Phúc Thịnh - Powered by LangChain & OpenAI & Streamlit")
