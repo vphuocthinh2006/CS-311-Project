@@ -1,16 +1,13 @@
 import os
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_react_agent
+from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.tools import tool
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain import hub
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv(".env")
-if not os.getenv("OPENAI_API_KEY"):
-    print("NOT FOUND THE API KEY!")
-else:
-    print("KEY FOUND!")
 
 # Import tools
 try:
@@ -150,15 +147,18 @@ def initialize_agent():
         tool_analyze_skills,
     ]
     
-    prompt = hub.pull("hwchase17/react")    
-    agent = create_react_agent(llm, tools, prompt)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "Bạn là một chuyên gia tư vấn tuyển dụng và phân tích hồ sơ chuyên nghiệp. Nhiệm vụ của bạn là giúp người dùng đánh giá mức độ phù hợp giữa CV và Mô tả công việc (JD)."),
+        ("user", "{input}"),
+        MessagesPlaceholder(variable_name="agent_scratchpad"),
+    ])
+    agent = create_openai_tools_agent(llm, tools, prompt)
     
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
         verbose=True,
         handle_parsing_errors=True,
-        max_iterations=15
     )
     
     return agent_executor

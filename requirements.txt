@@ -1,8 +1,8 @@
 streamlit
-langchain
-langchain-openai
-langchain-community
-langchainhub
+langchain==0.1.16
+langchain-openai==0.1.3
+langchain-community==0.0.32
+langchain-core==0.1.42
 python-dotenv
 openai
 pymupdf
@@ -12,3 +12,5 @@ Pillow
 sentence-transformers
 scikit-learn
 numpy
+sentencepiece
+protobuf
