@@ -3,6 +3,21 @@ import os
 import tempfile
 from dotenv import load_dotenv
 import sys
+st.title("🕵️‍♂️ Debug Mode")
+current_dir = os.getcwd()
+st.write(f"📂 Thư mục hiện tại: `{current_dir}`")
+files = os.listdir(current_dir)
+st.write("📄 Danh sách file thực tế trên server:")
+st.code(files)
+if "agent.py" in files:
+    st.success("✅ TÌM THẤY file agent.py trên đĩa cứng!")
+else:
+    st.error("❌ KHÔNG TÌM THẤY file agent.py trên đĩa cứng! (Lỗi Git rồi)")
+    st.stop()
+st.write("🔄 Đang thử import agent...")
+st.success("✅ Import agent thành công! Code agent ngon lành.")
+
+
 load_dotenv()
 try:
     from agent import analyze_cv_jd
