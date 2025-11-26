@@ -1,17 +1,18 @@
 import os
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain_classic.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain import hub
+from langchain_core.messages import HumanMessage
+from langchain_classic import hub
 from dotenv import load_dotenv
-
+import base64
 # Load environment variables
 load_dotenv(".env")
 
 # Import tools
 try:
-    from tools_ocr import extract_text_hybrid_fixed, extract_text_from_image, process_raw_text
+    from tools_ocr import process_raw_text
     from tools_similarity import calculate_similarity
     from tools_skills import compare_skills_tool
 except ImportError as e:
@@ -27,19 +28,42 @@ JD_TEXT_STORAGE = ""
 
 # ===== SIMPLE TOOLS - NO JSON =====
 @tool
-def tool_read_image(image_path: str) -> str:
+def tool_extract_text_from_file(file_path: str) -> str:
     """
-    Đọc văn bản từ file ảnh.
-    Input: đường dẫn file ảnh
-    Output: nội dung văn bản
+    Trích xuất văn bản từ file (PDF hoặc ảnh) bằng GPT-4o Vision.
+    Agent tự động xử lý mọi loại file.
+    
+    Input: đường dẫn file (PDF/PNG/JPG/JPEG)
+    Output: nội dung văn bản được trích xuất
     """
     try:
-        result = extract_text_from_image(image_path)
-        if not result or "error" in result.lower():
-            return "ERROR_OCR: Tesseract chưa được cài đặt. Vui lòng dùng text input."
-        return result
+        with open(file_path, "rb") as f:
+            file_bytes = f.read()
+            base64_data = base64.b64encode(file_bytes).decode('utf-8')
+        ext = file_path.lower().split('.')[-1]
+        
+        if ext == 'pdf':
+            mime_type = "application/pdf"
+        else:
+            mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
+        vision_llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        message = HumanMessage(
+            content=[
+                {
+                    "type": "text",
+                    "text": "Trích xuất TOÀN BỘ văn bản trong file này. Giữ nguyên format và cấu trúc. Chỉ trả về text, không thêm giải thích."
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{base64_data}"}
+                }
+            ]
+        )
+        response = vision_llm.invoke([message])
+        return response.content
     except Exception as e:
-        return f"ERROR_OCR: {str(e)}"
+        return f"ERROR: Không thể đọc file - {str(e)}"
+
 
 
 @tool
@@ -53,22 +77,6 @@ def tool_process_text_input(raw_text: str) -> str:
         return process_raw_text(raw_text)
     except Exception as e:
         return f"ERROR: {str(e)}"
-
-
-@tool
-def tool_read_pdf(file_path: str) -> str:
-    """
-    Đọc văn bản từ file PDF.
-    Input: đường dẫn file PDF
-    Output: nội dung văn bản
-    """
-    try:
-        result = extract_text_hybrid_fixed(file_path)
-        if not result or len(result.strip()) < 10:
-            return "ERROR_PDF: File PDF trống hoặc không đọc được."
-        return result
-    except Exception as e:
-        return f"ERROR_PDF: {str(e)}"
 
 
 @tool
@@ -132,23 +140,64 @@ def tool_analyze_skills(dummy: str = "run") -> str:
         return f"cv_skills: {cv_skills} ||| missing_skills: {missing_skills}"
     except Exception as e:
         return f"ERROR: {str(e)}"
+@tool
+def tool_suggest_jobs(dummy: str = "run") -> str:
+    """
+    Gợi ý các vị trí việc làm phù hợp dựa trên CV đã lưu.
+    Sử dụng kiến thức của agent để đề xuất (KHÔNG dùng tool khác).
+    
+    Input: bất kỳ (dummy parameter)
+    Output: danh sách 5-7 vị trí việc làm phù hợp
+    
+    Agent hãy tự phân tích CV và đưa ra gợi ý dựa trên:
+    - Kỹ năng hiện tại
+    - Kinh nghiệm làm việc
+    - Ngành nghề
+    - Mức độ seniority
+    
+    Format output:
+    1. [Tên vị trí] - [Lý do phù hợp ngắn gọn]
+    2. ...
+    """
+    global CV_TEXT_STORAGE
+    
+    if not CV_TEXT_STORAGE:
+        return "ERROR: Chưa có CV. Vui lòng phân tích CV trước."
+    
+    # Trả về CV để agent tự phân tích
+    return f"CV_CONTENT_FOR_ANALYSIS:\n{CV_TEXT_STORAGE[:2000]}"
 
 def initialize_agent():
     """Khởi tạo Agent."""
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
     
     tools = [
-        tool_read_pdf,
-        tool_read_image,
+        tool_extract_text_from_file,
         tool_process_text_input,
         tool_store_cv_text,
         tool_store_jd_text,
         tool_calculate_match_score,
         tool_analyze_skills,
+        tool_suggest_jobs
     ]
-    
+    system_message = """Bạn là AI Recruitment Expert chuyên nghiệp.
+
+NHIỆM VỤ:
+- Phân tích CV và JD
+- Tính điểm phù hợp
+- So sánh kỹ năng
+- Đề xuất khóa học
+- Gợi ý việc làm phù hợp
+
+QUAN TRỌNG:
+- Với file (PDF/ảnh): Dùng tool_extract_text_from_file để OCR
+- Với text: Dùng tool_process_text_input để làm sạch
+- Luôn lưu CV/JD sau khi trích xuất
+- Khi gợi ý việc làm: Phân tích CV và tự đưa ra gợi ý dựa trên kiến thức của bạn
+- Khi gợi ý khóa học: Tự nghĩ ra các khóa học phù hợp từ Coursera, Udemy, edX
+- Trả lời bằng tiếng Việt, chuyên nghiệp, thân thiện"""
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Bạn là một chuyên gia tư vấn tuyển dụng và phân tích hồ sơ chuyên nghiệp. Nhiệm vụ của bạn là giúp người dùng đánh giá mức độ phù hợp giữa CV và Mô tả công việc (JD)."),
+        ("system", system_message),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
@@ -252,6 +301,88 @@ BẮT ĐẦU!
     
     try:
         result = agent.invoke({"input": user_query})
+        return result['output']
+    except Exception as e:
+        return f"❌ Lỗi: {str(e)}"
+    
+def find_suitable_jobs():
+    """
+    Tìm việc làm phù hợp với CV đã lưu.
+    
+    Returns:
+        str: Danh sách việc làm gợi ý
+    """
+    global CV_TEXT_STORAGE
+    
+    if not CV_TEXT_STORAGE:
+        return "❌ Chưa có CV. Vui lòng phân tích CV ở tab 'Phân Tích CV-JD' trước!"
+    
+    print("\n🔍 TÌM VIỆC LÀM PHÙ HỢP...\n")
+    
+    agent = initialize_agent()
+    
+    query = f"""
+Dựa vào CV đã lưu, hãy gợi ý 5-7 vị trí việc làm PHÙ HỢP NHẤT.
+
+CV:
+{CV_TEXT_STORAGE[:2000]}
+
+YÊU CẦU:
+- Phân tích kỹ năng, kinh nghiệm, ngành nghề từ CV
+- Đề xuất TÊN VỊ TRÍ/VAI TRÒ cụ thể (VD: "Senior Python Developer", "AI Engineer")
+- KHÔNG đề xuất tên công ty
+- Xếp theo độ phù hợp từ cao → thấp
+- Giải thích ngắn gọn (1-2 câu) tại sao phù hợp
+
+FORMAT:
+
+# 💼 GỢI Ý VIỆC LÀM PHÙ HỢP
+
+## 🎯 Phân Tích Hồ Sơ
+[Tóm tắt ngắn: kỹ năng chính, kinh nghiệm, level]
+
+## 📋 Danh Sách Vị Trí Đề Xuất
+
+### 1. [Tên vị trí 1]
+**Độ phù hợp:** ⭐⭐⭐⭐⭐ (Rất cao)
+**Lý do:** [Giải thích ngắn]
+
+### 2. [Tên vị trí 2]
+**Độ phù hợp:** ⭐⭐⭐⭐ (Cao)
+**Lý do:** [Giải thích ngắn]
+
+[... tiếp tục cho đến vị trí 5-7]
+
+## 💡 Lời Khuyên
+[Gợi ý về hướng phát triển sự nghiệp]
+"""
+    
+    try:
+        result = agent.invoke({"input": query})
+        return result['output']
+    except Exception as e:
+        return f"❌ Lỗi: {str(e)}"
+def chat_with_agent(user_message: str):
+    """
+    Chat tự do với agent (không lưu history).
+    
+    Args:
+        user_message: Câu hỏi của người dùng
+    
+    Returns:
+        str: Phản hồi của agent
+    """
+    agent = initialize_agent()
+    global CV_TEXT_STORAGE, JD_TEXT_STORAGE
+    context = ""
+    if CV_TEXT_STORAGE:
+        context += f"\n[CV đã lưu: {len(CV_TEXT_STORAGE)} ký tự]"
+    if JD_TEXT_STORAGE:
+        context += f"\n[JD đã lưu: {len(JD_TEXT_STORAGE)} ký tự]"
+    
+    full_query = f"{context}\n\nCÂU HỎI: {user_message}\n\nHãy trả lời dựa trên thông tin đã lưu (nếu có) và kiến thức của bạn."
+    try:
+        result = agent.invoke({"input": full_query})
         return result['output']
     except Exception as e:
         return f"❌ Lỗi: {str(e)}"
