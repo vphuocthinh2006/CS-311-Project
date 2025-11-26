@@ -1,9 +1,9 @@
 streamlit
-langchain==0.1.16
-langchain-openai==0.1.3
-langchain-community==0.0.32
-langchain-core==0.1.42
-langchain_classic
+langchain==0.1.20
+langchain-community==0.0.38
+langchain-core==0.1.52
+langchain-openai==0.1.6
+langgraph==0.0.39
 python-dotenv
 openai
 pymupdf

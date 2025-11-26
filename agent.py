@@ -1,10 +1,10 @@
 import os
 from langchain_openai import ChatOpenAI
-from langchain_classic.agents import AgentExecutor, create_openai_tools_agent
+from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage
-from langchain_classic import hub
+from langchain import hub
 from dotenv import load_dotenv
 import base64
 # Load environment variables

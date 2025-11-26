@@ -95,7 +95,7 @@ with tab1:
                                     placeholder="Paste nội dung JD vào đây...")
     
     st.markdown("---")
-    analyze_btn = st.button("🚀 PHÂN TÍCH TOÀN DIỆN", type="primary", use_container_width=True)
+    analyze_btn = st.button("🚀 PHÂN TÍCH", type="primary", use_container_width=True)
     
     if analyze_btn:
         if not cv_input or not jd_input:
@@ -160,7 +160,7 @@ with tab2:
     
     with col2:
         st.markdown("""
-        <div class="success-box">
+        <div class="success-box" style = "color: black;">
         <strong>📋 Bước thực hiện:</strong><br>
         1. Tab 1: Phân tích CV<br>
         2. Tab 2: Tìm việc<br>
