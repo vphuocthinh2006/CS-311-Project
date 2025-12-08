@@ -7,6 +7,8 @@ from langchain_core.messages import HumanMessage
 from langchain import hub
 from dotenv import load_dotenv
 import base64
+import fitz  # pymupdf - để convert PDF sang images
+import io
 # Load environment variables
 load_dotenv(".env")
 
@@ -37,30 +39,62 @@ def tool_extract_text_from_file(file_path: str) -> str:
     Output: nội dung văn bản được trích xuất
     """
     try:
-        with open(file_path, "rb") as f:
-            file_bytes = f.read()
-            base64_data = base64.b64encode(file_bytes).decode('utf-8')
         ext = file_path.lower().split('.')[-1]
-        
-        if ext == 'pdf':
-            mime_type = "application/pdf"
-        else:
-            mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
         vision_llm = ChatOpenAI(model="gpt-4o", temperature=0)
-        message = HumanMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": "Trích xuất TOÀN BỘ văn bản trong file này. Giữ nguyên format và cấu trúc. Chỉ trả về text, không thêm giải thích."
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{mime_type};base64,{base64_data}"}
-                }
-            ]
-        )
-        response = vision_llm.invoke([message])
-        return response.content
+        
+        # Xử lý PDF: convert từng trang sang image rồi OCR
+        if ext == 'pdf':
+            pdf_doc = fitz.open(file_path)
+            all_text = []
+            
+            for page_num in range(len(pdf_doc)):
+                page = pdf_doc[page_num]
+                # Render page thành image với độ phân giải cao
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better quality
+                img_bytes = pix.tobytes("png")
+                base64_data = base64.b64encode(img_bytes).decode('utf-8')
+                
+                message = HumanMessage(
+                    content=[
+                        {
+                            "type": "text",
+                            "text": f"Trích xuất TOÀN BỘ văn bản trong trang {page_num + 1} này. Giữ nguyên format và cấu trúc. Chỉ trả về text, không thêm giải thích."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{base64_data}"}
+                        }
+                    ]
+                )
+                response = vision_llm.invoke([message])
+                all_text.append(f"--- Trang {page_num + 1} ---\n{response.content}")
+            
+            pdf_doc.close()
+            return "\n\n".join(all_text)
+        
+        # Xử lý ảnh: OCR trực tiếp
+        else:
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+                base64_data = base64.b64encode(file_bytes).decode('utf-8')
+            
+            mime_type = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
+            
+            message = HumanMessage(
+                content=[
+                    {
+                        "type": "text",
+                        "text": "Trích xuất TOÀN BỘ văn bản trong file này. Giữ nguyên format và cấu trúc. Chỉ trả về text, không thêm giải thích."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{base64_data}"}
+                    }
+                ]
+            )
+            response = vision_llm.invoke([message])
+            return response.content
+            
     except Exception as e:
         return f"ERROR: Không thể đọc file - {str(e)}"
 
@@ -237,8 +271,7 @@ THÔNG TIN:
 BƯỚC 1: TRÍCH XUẤT CV TEXT
 ══════════════════════════════════════════════
 Nếu cv_type == 'file':
-  - Nếu cv_input có đuôi .pdf: Gọi tool_read_pdf("{cv_input}")
-  - Nếu cv_input có đuôi .png/.jpg: Gọi tool_read_image("{cv_input}")
+  - Gọi tool_extract_text_from_file("{cv_input}") để OCR file PDF/ảnh
 Nếu cv_type == 'text':
   - Gọi tool_process_text_input với nội dung CV
 
@@ -247,7 +280,10 @@ SAU ĐÓ: Gọi tool_store_cv_text với kết quả vừa nhận
 ══════════════════════════════════════════════
 BƯỚC 2: TRÍCH XUẤT JD TEXT
 ══════════════════════════════════════════════
-Làm tương tự với JD
+Nếu jd_type == 'file':
+  - Gọi tool_extract_text_from_file("{jd_input}") để OCR file PDF/ảnh
+Nếu jd_type == 'text':
+  - Gọi tool_process_text_input với nội dung JD
 SAU ĐÓ: Gọi tool_store_jd_text với kết quả
 
 ══════════════════════════════════════════════
@@ -362,6 +398,90 @@ FORMAT:
         return result['output']
     except Exception as e:
         return f"❌ Lỗi: {str(e)}"
+
+def find_hiring_companies():
+    """
+    Tìm các công ty đang tuyển dụng phù hợp với CV.
+    
+    Returns:
+        str: Danh sách công ty và link tuyển dụng
+    """
+    global CV_TEXT_STORAGE
+    
+    if not CV_TEXT_STORAGE:
+        return "❌ Chưa có CV. Vui lòng phân tích CV ở tab 'Phân Tích CV-JD' trước!"
+    
+    print("\n🏢 TÌM CÔNG TY ĐANG TUYỂN DỤNG...\n")
+    
+    agent = initialize_agent()
+    
+    query = f"""
+Dựa vào CV đã lưu, hãy gợi ý 8-10 CÔNG TY đang tuyển dụng phù hợp nhất.
+
+CV:
+{CV_TEXT_STORAGE[:2000]}
+
+YÊU CẦU:
+1. Phân tích kỹ năng và ngành nghề từ CV
+2. Đề xuất CÁC CÔNG TY THẬT (có tên, có thương hiệu) ở Việt Nam và quốc tế
+3. Ưu tiên công ty lớn, có uy tín, đang tuyển nhiều
+4. Với mỗi công ty, cung cấp:
+   - Tên công ty
+   - Ngành nghề/Lĩnh vực
+   - Tại sao phù hợp (1 câu)
+   - Link tuyển dụng THẬT (career page hoặc LinkedIn)
+
+QUAN TRỌNG: Chỉ đề xuất CÔNG TY THẬT, KHÔNG bịa tên công ty!
+
+FORMAT:
+
+# 🏢 CÔNG TY ĐANG TUYỂN DỤNG
+
+## 🎯 Ngành Nghề Phù Hợp
+[Liệt kê 2-3 ngành nghề chính dựa trên CV]
+
+## 📋 Danh Sách Công Ty
+
+### 🇻🇳 Công Ty Tại Việt Nam
+
+#### 1. [Tên Công Ty]
+- **Ngành:** [Ngành nghề]
+- **Phù hợp vì:** [Lý do ngắn]
+- **🔗 Tuyển dụng:** [Link career page thật, ví dụ: https://careers.fpt.com.vn]
+
+#### 2. [Tên Công Ty]
+...
+
+### 🌍 Công Ty Quốc Tế (Remote/Hybrid)
+
+#### 1. [Tên Công Ty]
+- **Ngành:** [Ngành nghề]
+- **Phù hợp vì:** [Lý do ngắn]
+- **🔗 Tuyển dụng:** [Link career page thật]
+
+...
+
+## 🔍 Link Tìm Việc Nhanh
+
+Dựa vào kỹ năng trong CV, tạo các link tìm kiếm sẵn:
+
+| Nền tảng | Link tìm kiếm |
+|----------|---------------|
+| LinkedIn | https://www.linkedin.com/jobs/search/?keywords=[keyword từ CV] |
+| Indeed VN | https://vn.indeed.com/jobs?q=[keyword] |
+| TopDev | https://topdev.vn/viec-lam-it/[keyword] |
+| ITviec | https://itviec.com/it-jobs/[keyword] |
+
+## 💡 Mẹo Ứng Tuyển
+[2-3 tips ngắn gọn về cách ứng tuyển hiệu quả]
+"""
+    
+    try:
+        result = agent.invoke({"input": query})
+        return result['output']
+    except Exception as e:
+        return f"❌ Lỗi: {str(e)}"
+
 def chat_with_agent(user_message: str):
     """
     Chat tự do với agent (không lưu history).
